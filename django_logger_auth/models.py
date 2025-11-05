@@ -26,9 +26,9 @@ class AuthLog(models.Model):
     class Meta:
         ordering = ['-timestamp']
         indexes = [
-            models.Index(fields=["-timestamp"]),
-            models.Index(fields=["event_type", "-timestamp"]),
-            models.Index(fields=["ip_address", "-timestamp"]),
+            models.Index(fields=["timestamp"]),
+            models.Index(fields=["event_type", "timestamp"]),
+            models.Index(fields=["ip_address", "timestamp"]),
         ]
         verbose_name = "Authentication Event"
         verbose_name_plural = "Authentication Events"

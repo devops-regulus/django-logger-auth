@@ -12,7 +12,7 @@ class AuthLogAdmin(admin.ModelAdmin):
     list_filter = ("event_type", "timestamp", "ip_address")
     search_fields = ("username", "ip_address", "user_agent", "whois_info")
     readonly_fields = ("username", "ip_address", "event_type", "user_agent", "whois_info")
-    ordering = ("-timestamp",)
+    ordering = ()
     date_hierarchy = "timestamp"
     fields = (
         "username",
@@ -26,6 +26,7 @@ class AuthLogAdmin(admin.ModelAdmin):
         return format_ts(obj.timestamp)
 
     timestamp_local.short_description = f"Timestamp ({settings.TIME_ZONE})"
+    timestamp_local.admin_order_field = "timestamp"
 
     def has_add_permission(self, request):
         return False
