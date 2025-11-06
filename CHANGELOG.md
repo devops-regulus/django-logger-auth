@@ -44,3 +44,22 @@ DJANGO_LOGGER_AUTH = {
 - requests >= 2.32.5
 - pytz >= 2025.2
 
+## [1.1.0] - 2025-11-06
+
+### Changed
+- Added the new universal configuration option `log_scope` to control the target of logging:
+  - `'admin'` — log only authentication events related to the admin panel (default)
+  - `'all'` — log all authentication events, including user profile logins and API auth
+- The `log_scope` parameter is now read from the `DJANGO_LOGGER_AUTH` settings dictionary.
+- Updated the `is_admin_request` logic to support the new setting.
+
+
+### Upgrade note
+- Update your `settings.py` as follows:
+  ```python
+  DJANGO_LOGGER_AUTH = {
+      # ...
+      'log_scope': 'admin',   # or 'all' (admin in default)
+  }
+  ```
+

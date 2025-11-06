@@ -3,14 +3,17 @@ import threading
 import pytz
 import requests
 from django.conf import settings
+from django.contrib import admin
 from django.contrib.auth.signals import user_logged_in, user_logged_out, user_login_failed
 from django.dispatch import receiver
+from django.urls import reverse, NoReverseMatch
 from django.utils import timezone
 from ipwhois import IPWhois
 from .config import get_effective_config
 from .models import AuthLog
 
 logger = logging.getLogger("auth_events")
+
 
 def get_client_ip(request):
     if not request:
@@ -20,10 +23,12 @@ def get_client_ip(request):
         return xff.split(",")[0].strip()
     return request.META.get("REMOTE_ADDR")
 
+
 def get_user_agent(request):
     if not request:
         return "unknown"
     return request.META.get("HTTP_USER_AGENT", "unknown")
+
 
 def get_local_time():
     try:
@@ -31,6 +36,7 @@ def get_local_time():
         return timezone.now().astimezone(tz)
     except Exception:
         return timezone.now()
+
 
 def _whois_lookup_direct(ip, timeout_sec=1.5):
     try:
@@ -55,8 +61,10 @@ def _whois_lookup_direct(ip, timeout_sec=1.5):
         logger.warning(f"WHOIS lookup failed for {ip}: {e}")
         return "lookup_failed"
 
+
 def get_audit_config():
     return get_effective_config()
+
 
 def _log_event_sync(event_type, username, ip, ua):
     """
@@ -86,7 +94,6 @@ def _log_event_sync(event_type, username, ip, ua):
         )
     except Exception as e:
         logger.exception(f"Failed to persist AuthLog: {e}")
-        
 
     local_time = get_local_time().strftime("%d/%b/%Y %H:%M:%S")
     log_line = (
@@ -104,11 +111,11 @@ def _log_event_sync(event_type, username, ip, ua):
     if cfg.console_logging:
         print(log_line)
 
+
 def log_event(event_type, username, ip, ua):
     """
     Logs an authentication event asynchronously to avoid blocking the request.
     """
-    # Запускаем логирование в отдельном потоке, чтобы не блокировать вход в админку
     thread = threading.Thread(
         target=_log_event_sync,
         args=(event_type, username, ip, ua),
@@ -116,15 +123,38 @@ def log_event(event_type, username, ip, ua):
     )
     thread.start()
 
+
+def is_admin_request(request):
+    """
+    Determine if the request is for the admin interface based on configuration.
+    """
+    if not request:
+        return False
+    from .config import get_effective_config
+    cfg = get_effective_config()
+    if cfg.log_scope == "all":
+        return True
+    try:
+        admin_login_path = reverse("admin:login")
+        base_admin_path = admin_login_path.rsplit("/login", 1)[0]
+        return request.path.startswith(base_admin_path)
+    except NoReverseMatch:
+        return False
+
 @receiver(user_logged_in)
 def log_user_login(sender, request, user, **kwargs):
-    log_event("login", user.username, get_client_ip(request), get_user_agent(request))
+    if is_admin_request(request):
+        log_event("login", user.username, get_client_ip(request), get_user_agent(request))
+
 
 @receiver(user_logged_out)
 def log_user_logout(sender, request, user, **kwargs):
-    log_event("logout", user.username, get_client_ip(request), get_user_agent(request))
+    if is_admin_request(request):
+        log_event("logout", user.username, get_client_ip(request), get_user_agent(request))
+
 
 @receiver(user_login_failed)
 def log_user_login_failed(sender, credentials, request, **kwargs):
-    username = credentials.get("username", "unknown")
-    log_event("fail", username, get_client_ip(request), get_user_agent(request))
+    if is_admin_request(request):
+        username = credentials.get("username", "unknown")
+        log_event("fail", username, get_client_ip(request), get_user_agent(request))

@@ -51,6 +51,7 @@ DJANGO_LOGGER_AUTH = {
     "console_logging": False,    # Log to console/terminal (default: False)
     "whois_lookup": True,        # Enable WHOIS lookup (default: True)
     "keep_days": 30,             # Days to keep logs (default: 30)
+    "log_scope": "admin",        # Log scope admin or all (default: "admin") admin - only admin-related authentication events, all - all authentication events
 }
 ```
 
@@ -126,7 +127,7 @@ Log entries are formatted as:
 | `console_logging` | bool | `False` | Enable logging to console/terminal |
 | `whois_lookup` | bool | `True` | Enable WHOIS lookup for IP addresses |
 | `keep_days` | int | `30` | Number of days to keep log entries |
-
+| `log_scope` | str | `"admin"` | Log scope admin or all (default: "admin") admin - only admin-related authentication events, all - all authentication events |
 ## Models
 
 ### AuthLog
