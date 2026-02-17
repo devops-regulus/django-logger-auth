@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "django-logger-auth"
-version = "1.1.0"
+version = "1.2.0"
 description = "Django application for logging authentication events (login/logout/failed) in the admin panel. Logs are stored in the database, with the option to save them to a file and output them to the console."
 readme = "README.md"
 requires-python = ">=3.10,<4"
