@@ -51,11 +51,38 @@ DJANGO_LOGGER_AUTH = {
     "console_logging": False,    # Log to console/terminal (default: False)
     "whois_lookup": True,        # Enable WHOIS lookup (default: True)
     "keep_days": 30,             # Days to keep logs (default: 30)
-    "log_scope": "admin",        # Log scope admin or all (default: "admin") admin - only admin-related authentication events, all - all authentication events
+    "log_scope": "admin",        # Log scope: "admin" or "all" (default: "admin")
+                                 # "admin" - only admin-related authentication events
+                                 # "all" - all authentication events
+    
+    # Admin Navigation Logging
+    "enable_navigation_logging": True,   # Enable/disable navigation logging (default: True)
+    "navigation_keep_days": 30,          # Days to keep navigation logs (default: 30)
+    "admin_url_prefix": "/admin/",      # Admin URL prefix to track (default: "/admin/")
+                                         # Change this if your admin is at a different URL
+    "excluded_paths": [                  # List of paths to exclude from logging (default: [])
+        "/admin/jsi18n/",               # Example: exclude JavaScript i18n catalog
+    ],
+    
+    # Security Settings
+    "allow_delete": False,               # Allow deleting records in admin panel (default: False)
 }
 ```
 
-### 3. Run Migrations
+### 3. Add Middleware (for Navigation Logging)
+
+To enable admin navigation logging, add the middleware to your `MIDDLEWARE` in `settings.py`:
+
+```python
+MIDDLEWARE = [
+    # ... other middleware
+    'django_logger_auth.middleware.AdminNavigationLoggingMiddleware',
+]
+```
+
+> **Note**: The middleware is optional. If you don't add it, only authentication events will be logged, not navigation.
+
+### 4. Run Migrations
 
 Create and apply the database migrations:
 
@@ -64,7 +91,7 @@ python manage.py makemigrations
 python manage.py migrate
 ```
 
-### 4. Configure Logging (Optional)
+### 5. Configure Logging (Optional)
 
 If you want file logging, configure a logger in your `settings.py`:
 
@@ -106,6 +133,16 @@ Access the logs through the Django admin interface at `/admin/`:
 3. Search by username, IP address, or user agent
 4. Use bulk actions to delete old records
 
+### Admin Navigation Logging
+
+When navigation logging is enabled, the app tracks URLs visited by administrators:
+
+- **Configurable admin URL prefix**: By default logs `/admin/` paths (admin panel), but you can customize this
+- **Excluded paths**: You can specify paths to exclude from logging (e.g., `/admin/jsi18n/`)
+- View navigation logs in **Admin Navigation Events** at `/admin/django_logger_auth/adminnavigationlog/`
+- Filter by username, URL path, request method, or status code
+- Navigation logs show: timestamp, URL path, URL name, request method, status code, and IP address
+
 ### Log Format
 
 Log entries are formatted as:
@@ -127,7 +164,13 @@ Log entries are formatted as:
 | `console_logging` | bool | `False` | Enable logging to console/terminal |
 | `whois_lookup` | bool | `True` | Enable WHOIS lookup for IP addresses |
 | `keep_days` | int | `30` | Number of days to keep log entries |
-| `log_scope` | str | `"admin"` | Log scope admin or all (default: "admin") admin - only admin-related authentication events, all - all authentication events |
+| `log_scope` | str | `"admin"` | Log scope: `"admin"` (only admin-related events) or `"all"` (all authentication events) |
+| `enable_navigation_logging` | bool | `True` | Enable or disable admin navigation logging |
+| `navigation_keep_days` | int | `30` | Number of days to keep navigation log entries |
+| `admin_url_prefix` | str | `"/admin/"` | Admin URL prefix to track (e.g., `"/admin/"`, `"/engine/"`) - auto-detected from Django settings |
+| `excluded_paths` | list | `[]` | List of paths to exclude from logging (e.g., `["/admin/jsi18n/"]`) |
+| `allow_delete` | bool | `False` | Allow deleting records in admin panel (security feature) |
+
 ## Models
 
 ### AuthLog
@@ -141,9 +184,24 @@ The `AuthLog` model stores authentication events with the following fields:
 - `timestamp`: When the event occurred
 - `whois_info`: WHOIS information (country, city, organization)
 
+### AdminNavigationLog
+
+The `AdminNavigationLog` model stores admin panel navigation events with the following fields:
+
+- `username`: Username of the user
+- `url_path`: The URL path visited
+- `url_name`: Resolved Django URL name (if available)
+- `ip_address`: Client IP address
+- `user_agent`: HTTP User-Agent string
+- `timestamp`: When the navigation occurred
+- `request_method`: HTTP method (GET, POST, etc.)
+- `status_code`: HTTP response status code
+
 ## Automatic Cleanup
 
-The app automatically deletes old log entries when new events are created. The retention period is controlled by the `keep_days` setting.
+The app automatically deletes old log entries when new events are created:
+- Authentication logs are cleaned up based on the `keep_days` setting
+- Navigation logs are cleaned up based on the `navigation_keep_days` setting
 
 ## Performance Considerations
 
